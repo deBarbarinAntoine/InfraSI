@@ -1,18 +1,18 @@
 # Presentation
 
 Authors
-: <img alt="person-icon" src="person-icon.svg" title="person-icon"/> Antoine de Barbarin
-: <img alt="person-icon" src="person-icon.svg" title="person-icon"/> Nicolas Moyon
-: <img alt="person-icon" src="person-icon.svg" title="person-icon"/> Sabrina Eloundou
+: <img alt="person-icon" src="person-icon.svg" title="person-icon"/> [Antoine de Barbarin](https://github.com/deBarbarinAntoine/)
+: <img alt="person-icon" src="person-icon.svg" title="person-icon"/> [Nicolas Moyon](https://github.com/Nicolas13100/)
+: <img alt="person-icon" src="person-icon.svg" title="person-icon"/> [Sabrina Eloundou](https://github.com/Esabrina77/)
 
 
 In this project, we will describe and explain an IT solution for a small business setting up a private local network connected to internet, in which there are 5 devices:
 
-> - a firewall,
-> - a web server,
-> - a backup server,
-> - a linux client,
-> - a Windows client.
+> - a [firewall](/firewall.html),
+> - a [web server](/web-server.html),
+> - a [backup server](/backup-server.html),
+> - a [linux client](/clients.html#linux-workstation),
+> - a [Windows client](/clients.html#windows-workstation).
 >
 {style="note"}
 
@@ -29,9 +29,9 @@ The **clients** are standard desktop workstations intended for general employee 
 |--------------------------|:----------------:|:-----------------:|:----------------:|:-----------------------:|
 | **Firewall**             | **LAN** 10.0.0.1 | **OPT1** 10.0.0.9 | **DMZ** 10.0.1.1 | **WAN** DHCP (from ISP) |
 | **Web Server**           |       ---        |        ---        |     10.0.1.2     |           ---           |
-| **Backup Server**        |       ---        |     10.0.0.10     |                  |           ---           |
-| **Linux Workstation**    | DHCP (10.0.0.2)  |        ---        |                  |           ---           |
-| **Windows Workstation**  | DHCP (10.0.0.3)  |        ---        |                  |           ---           |
+| **Backup Server**        |       ---        |     10.0.0.10     |       ---        |           ---           |
+| **Linux Workstation**    | DHCP (10.0.0.2)  |        ---        |       ---        |           ---           |
+| **Windows Workstation**  | DHCP (10.0.0.3)  |        ---        |       ---        |           ---           |
 {style="both"}
 
 

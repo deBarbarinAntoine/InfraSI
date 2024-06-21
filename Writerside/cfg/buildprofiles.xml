@@ -13,5 +13,20 @@
             <noindex-content>true</noindex-content>
         </variables>
     </build-profile>
+    <build-profile instance="f">
+        <variables>
+            <noindex-content>true</noindex-content>
+        </variables>
+    </build-profile>
+    <build-profile instance="pi/f">
+        <variables>
+            <noindex-content>true</noindex-content>
+        </variables>
+    </build-profile>
+    <build-profile instance="iip">
+        <variables>
+            <noindex-content>true</noindex-content>
+        </variables>
+    </build-profile>
 
 </buildprofiles>

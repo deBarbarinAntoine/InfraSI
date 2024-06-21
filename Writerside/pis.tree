@@ -9,4 +9,6 @@
     <toc-element topic="Projet-Infra-SI.md"/>
     <toc-element topic="Firewall.md"/>
     <toc-element topic="Web-Server.md"/>
+    <toc-element topic="Backup-Server.md"/>
+    <toc-element topic="Clients.md"/>
 </instance-profile>
