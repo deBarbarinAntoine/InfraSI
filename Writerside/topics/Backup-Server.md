@@ -2,158 +2,165 @@
 
 This guide walks you through configuring BorgBackup for automated backups on your Ubuntu server.
 
-## Prerequisites
+## SSH Key pair
 
-- An SSH key pair (if you don't have one, follow the instructions in the "Generate SSH Key Pair" section below)
-- Access to a remote server for storing backups (optional, but highly recommended)
+- The Backup Server uses an SSH Key pair to perform its backups and restoration jobs.
 
 ---
 
-## 1. Installation
+## 1. Overview
 
-1. Open a terminal session on your Ubuntu backup server via SSH.
+BorgBackup is a program that performs and manages backups, and is usable between the local device and a remote one.
 
-2. Update package lists:
+In our case, the **Backup Server** backs up files from a remote device over SSH and manages it locally. That use-case is not common, because normally the contrary is done, and is supported natively. To do what we wanted here, we needed to use `sshfs` to *mount* the remote directory locally through **SSH**, and then perform the backup or restoration, before *unmounting* the remote directory.
 
-   ```Bash
-   sudo apt update
-   ```
-   
-3. Install BorgBackup:
-   ```Bash
-   sudo apt install borgbackup borgbackup-doc
-   ```
+The backups are automatically done every day at midnight, and then removed periodically (leaving only a few).
+
+The restoration feature is manual, and a **Bash script** is to use in this case.
+The user needs to type the date in format `YYYY-MM-DD` to restore that specific snapshot into the **Webserver**.
    
 ---
 
-## 2. Configure BorgBackup
+## 2. Backup script
 
-### Repository
+: `~/backup.sh`:
+```Bash
+#!/bin/bash
 
-Decide where to store your backups. We're using a remote server accessible via SSH.
+# Configuration
+REMOTE_USER="webserver"
+REMOTE_HOST="10.0.1.2"
+REMOTE_PATH="/var/www/infrasi"
+MOUNT_POINT="/mnt/backup_source"
+REPOSITORY="/home/backup-server/backups"
+ARCHIVE_NAME="$(hostname)-$(date +%Y-%m-%d)"
+BACKUP_DEST="$REPOSITORY::$ARCHIVE_NAME"
 
-### Steps
+# Debugging output
+echo "Backup Source: $REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH"
+echo "Backup Destination: $BACKUP_DEST"
 
-1. `borg init ssh://username@server_address:/path/to/repository` (replace with your details)
-2. enter a strong passphrase when prompted. This is crucial for accessing and decrypting backups. Store it securely.
+# Create a mount point directory if it does not exist
+if [ ! -d "$MOUNT_POINT" ]; then
+    echo "Creating mount point directory..."
+    mkdir -p "$MOUNT_POINT"
+fi
 
----
+# Mount the remote directory using sshfs
+echo "Mounting the remote directory..."
+if ! mountpoint -q "$MOUNT_POINT"; then
+    sshfs "$REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH" "$MOUNT_POINT"
+    if [ $? -ne 0 ]; then
+        echo "Failed to mount the remote directory. Aborting backup."
+        exit 1  # Exit with a non-zero status to indicate failure
+    fi
+fi
 
-## 3. Setting Up Automatic Backups
+# Check destination path
+echo "Checking destination path..."
+if [ ! -d "$REPOSITORY" ]; then
+    echo "Destination directory does not exist. Creating it now."
+    mkdir -p "$REPOSITORY"
+    if [ $? -ne 0 ]; then
+        echo "Failed to create destination directory. Aborting backup."
+        exit 1  # Exit with a non-zero status to indicate failure
+    fi
+fi
 
-### Script Creation
+# Initialize the Borg repository if it does not exist
+if ! borg info $REPOSITORY &>/dev/null; then
+    echo "Initializing the Borg repository..."
+    borg init --encryption=repokey $REPOSITORY
+    if [ $? -ne 0 ]; then
+        echo "Borg repository initialization failed. Check the logs for details."
+        exit 1  # Exit with a non-zero status to indicate failure
+    fi
+fi
 
-1. Create a script named backup.sh (or any preferred name) to automate backups using `borg create`.
+# Run BorgBackup with options
+echo "Starting Borg Backup..."
+borg create -v --stats "$BACKUP_DEST" "$MOUNT_POINT"
 
-	Example:
-	```Bash
-	#!/bin/bash
-		
-	# Set backup source and destination
-	BACKUP_SOURCE="/home"
-	BACKUP_DEST="::$(hostname)-$(date +%Y-%m-%d)" # Creates a unique archive name with date
-		
-	# Exclude specific directories (optional)
-	EXCLUDE_DIRS="/home/*/.cache /home/*/.ccache"
-		
-	# Run BorgBackup with options
-	borg create -v --stats --exclude $EXCLUDE_DIRS $BACKUP_DEST $BACKUP_SOURCE
-		
-	# Optional: Prune old backups (explained later)
-	# borg prune --keep-daily=7 --keep-weekly=4 --keep-monthly=6 >> /var/log/backup.log 2>&1
-	```
- 
-2. Save the script in a suitable location (something like /home/user/backup_scripts)
+# Check the status of the backup command
+if [ $? -ne 0 ]; then
+    echo "Borg Backup failed. Check the above logs for details."
+    exit 1  # Exit with a non-zero status to indicate failure
+else
+    echo "Borg Backup completed successfully."
+    # Verify the backup
+    echo "Verifying the backup..."
+    borg check "$BACKUP_DEST"
+    if [ $? -ne 0 ]; then
+        echo "Backup verification failed. Check the logs for details."
+        exit 1  # Exit with a non-zero status to indicate verification failure
+    else
+        echo "Backup verification completed successfully."
+    fi
+fi
 
-### Make the Script Executable
+# Unmount the remote directory
+echo "Unmounting the remote directory..."
+fusermount -u "$MOUNT_POINT"
 
-   ```Bash
-   chmod +x backup.sh
-   ```
+# Check if unmounting was successful
+if [ $? -ne 0 ]; then
+    echo "Failed to unmount the remote directory. Manual cleanup might be required."
+    exit 1  # Exit with a non-zero status to indicate failure
+fi
 
----
+echo "Script completed successfully."
+```
 
-## 4. Scheduling Backups
+The automation of the backup is done this way:
+```Bash
+crontab -e
 
-User cron to schedule automatic backups:
-
-1. Edit the crontab:
-	```Bash
-	crontab -e
-	```
- 
-2. Add a line like this to run the script daily at midnight:
-
-	```Bash
 	0 0 * * * /home/user/backup_scripts/backup.sh >> /var/log/backup.log 2>&1
-	```
-
-### Adjust the Schedule:
-   - Modify the cron expression for hourly, weekly, etc. backups.
-   - Update the path to your script as needed.
+```
 
 ---
 
-## 5. Manual Restores
+## 3. Restoration script
 
-### Listing Backups:
-
-1. List available backups:
-
-	```Bash
-	borg list ssh://username@server_address:/path/to/repository
-
-	```
-This will display a list of archive names with timestamps.
-
-### Restoring a Specific Backup:
-
-1. To restore a specific backup (e.g. your-hostname-2024-05-20)
-	```Bash
-	borg extract ssh://username@server_address:/path/to/repository::your-hostname-2024-05-20 /destination/folder
-	```
-
-2. Replace `/destination/folder` with the location for restored files.
-
----
-
-## 6. Optional: Prune Old Backups
-
-BorgBackup allows keeping a specific number of backups ( daily, weekly, monthly), uncomment the borg prune line in the script given earlier.
-
-Adjust the option (`--keep-daily=7`, etc.) to define max age of a backup.
-
-### Notice:
-
-- Replace placeholders with your specific details.
-- Securely store your BorgBackup passphrase.
-- Regularly test backups to ensure functionality.
-
-### Generate SSH Key Pair
-
+: `~/restore.sh`:
 ```Bash
-ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+#!/bin/bash
+
+# Configuration
+REMOTE_USER="webserver"
+REMOTE_HOST="10.0.1.2"
+REMOTE_PATH="/var/www/infrasi"
+MOUNT_POINT="/mnt/backup_source"
+REPOSITORY="/home/backup-server/backups"
+ARCHIVE_NAME="$(hostname)-$(date +%Y-%m-%d)"
+BACKUP_DEST="$REPOSITORY::$ARCHIVE_NAME"
+
+# Retreiving the date of the snapshot to restore:
+echo "Type the date of the snapshot you want to restore: [YYYY-MM-DD]"
+read -p ">> " date
+
+# Mount the remote directory using sshfs
+echo "Mounting the remote directory..."
+if ! mountpoint -q "$MOUNT_POINT"; then
+    sshfs "$REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH" "$MOUNT_POINT"
+    if [ $? -ne 0 ]; then
+        echo "Failed to mount the remote directory. Aborting restoration."
+        exit 1  # Exit with a non-zero status to indicate failure
+    fi
+fi
+
+# Restore the requested version into the webserver
+borg extract $REPOSITORY::$(hostname)-$date $MOUNT_POINT
+
+# Unmount the remote directory
+echo "Unmounting the remote directory..."
+fusermount -u "$MOUNT_POINT"
+
+# Check if unmounting was successful
+if [ $? -ne 0 ]; then
+    echo "Failed to unmount the remote directory. Manual cleanup might be required."
+    exit 1  # Exit with a non-zero status to indicate failure
+fi
+
+echo "Script completed successfully."
 ```
-
-Follow the prompts to save the key (default location is `~/.ssh/id_rsa`) and optionally set a passphrase.
-
-### Copy Public Key to Remote Server:
-
-```Bash
-ssh-copy-id user@remote-server
-```
-
-This command will prompt for your remote user password and copy your public key to the remote server.
-
-### Verify Passwordless SSH:
-
-```Bash
-ssh user@remote-server
-```
-
-If successful, your script can now connect to the remote server without requiring a password.
-
-
-
-
-

@@ -47,146 +47,21 @@ The DMZ interface is used to host services reachable from internet, isolating it
 
 ## Filtering Rules
 
-### LAN & OPT1
+### LAN
 
-1. **Permit all outward traffic**: Authorizes all devices of the LAN and OPT1 networks to access to internet.
-    ```
-    Action : Pass
-    Interface : LAN
-    Source : LAN subnet
-    Destination : any
-    ```
-    ```
-    Action : Pass
-    Interface : OPT1
-    Source : OPT1 subnet
-    Destination : any
-    ```
+![lan-rules.png](lan-rules.png)
 
-2. **Block all unauthorized inward traffic**: By default, all inward traffic is blocked if it doesn't match a positive rule.
+### OPT1
 
-3. **Authorize access to the webserver through SSH from a specific client (defined by IP)**: Allows access to the webserver through SSH to manage or administrate it. The administrator is situated in the LAN network and the backup server is in the OPT1 network.
-    ```
-    Action : Pass
-    Interface : LAN
-    Protocol : SSH
-    Source : LAN address (client's IP)
-    Destination : DMZ address (webserver's IP)
-    ```
-    ```
-    Action : Pass
-    Interface : OPT1
-    Protocol : SSH
-    Source : OPT1 address (Backup Server's IP)
-    Destination : DMZ address (Webserver's IP)
-    ```
-
-4. **Authorize internal traffic in the LAN's and OPT1's subnets**: Allows all devices on the LAN's subnets to communicate using HTTP, HTTPS, DNS and ICMP protocols.
-    ```
-    Action : Pass
-    Interface : LAN
-    Protocol : TCP/UDP
-    Source : LAN subnet
-    Destination : LAN subnet
-    Destination Port : 80 (HTTP), 443 (HTTPS), 53 (DNS), ICMP
-    ```
-    ```
-    Action : Pass
-    Interface : OPT1
-    Protocol : TCP/UDP
-    Source : OPT1 subnet
-    Destination : OPT1 subnet
-    Destination Port : 80 (HTTP), 443 (HTTPS), 53 (DNS), ICMP
-    ```
-
-5. **Authorize the Linux Workstation and the Backup Server to access the webserver in the DMZ through SSH**: Allows the Linux Workstation and the Backup Server to connect to the webserver through SSH.
-    ```
-    Action : Pass
-    Interface : LAN
-    Protocol : TCP/UDP
-    Source : Linux client IP
-    Destination : DMZ server IP
-    Destination Port : 22 (SSH)
-    ```
-    ```
-    Action : Pass
-    Interface : OPT1
-    Protocol : TCP/UDP
-    Source : Backup Server IP
-    Destination : DMZ server IP
-    Destination Port : 22 (SSH)
-    ```
-
-6. **Authorize LAN's subnets to access the website hosted in the webserver (DMZ)**: Allows all devices in the LAN's subnets to access the website hosted in the webserver (DMZ) through HTTP and HTTPS protocols.
-    ```
-    Action : Pass
-    Interface : LAN
-    Protocol : TCP
-    Source : LAN subnet
-    Destination : DMZ webserver IP
-    Destination Port : 80 (HTTP), 443 (HTTPS)
-    ```
+![opt1-rules.png](opt1-rules.png)
 
 ### WAN
 
-1. **Authorize the HTTP/HTTPS traffic from the WAN to the webserver in the DMZ**: Allows the HTTP and HTTPS traffic from the internet (WAN) to be redirected to the webserver in the DMZ.
-    ```
-    Action : Pass
-    Interface : WAN
-    Protocol : TCP
-    Source : any
-    Destination : WAN address
-    Destination Port : 80 (HTTP), 443 (HTTPS)
-    NAT : Redirect to DMZ webserver IP
-    ```
-   
-2. **Block all inward traffic**: By default, all inward traffic is blocked except the VPN connections or the ones specified before.
-    ```
-    Action : Block
-    Interface : WAN
-    Source : any
-    Destination : WAN address
-    ```
+![wan-rules.png](wan-rules.png)
 
 ### DMZ
 
-1. **Authorize HTTP/HTTPS traffic**: Allows access to the webserver in the DMZ through HTTP and HTTPS protocols.
-    ```
-    Action : Pass
-    Interface : DMZ
-    Protocol : TCP
-    Source : any
-    Destination : DMZ address
-    Destination Port : 80 (HTTP) ou 443 (HTTPS)
-    ```
-
-2. **Block access to the LAN and OPT1 from the DMZ**: Prevents the webserver to access the LAN and OPT1 networks.
-    ```
-    Action : Block
-    Interface : DMZ
-    Source : DMZ net
-    Destination : LAN net
-    ```
-    ```
-    Action : Block
-    Interface : DMZ
-    Source : DMZ net
-    Destination : OPT1 net
-    ```
-
-3. **Block the traffic between DMZ's subnets and LAN's/OPT1's subnets**: Prevents all communication between devices in the DMZ's subnets and those in the LAN's and OPT1's subnets.
-    ```
-    Action : Block
-    Interface : DMZ
-    Source : DMZ subnet
-    Destination : LAN subnet
-    ```
-    ```
-    Action : Block
-    Interface : DMZ
-    Source : DMZ subnet
-    Destination : OPT1 subnet
-    ```
+![dmz-rules.png](dmz-rules.png)
 
 ## Conclusion
 
